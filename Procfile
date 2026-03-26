@@ -1,1 +1,1 @@
-web: python launcher.py
+web: python3 launcher.py
