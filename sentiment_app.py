@@ -32,7 +32,7 @@ def parse_html_data(file_path):
         if symbol_match and lots_match:
             symbol = symbol_match.group(1).replace("NFO:", "").replace("MCX:", "")
             
-            # Smart Base Symbol Detection (No more hardcoded months)
+            # Smart Base Symbol Detection
             base_symbol = "UNKNOWN"
             for asset in ASSETS:
                 if symbol.startswith(asset):
@@ -41,7 +41,6 @@ def parse_html_data(file_path):
             
             strike = 0
             opt_type = "FUT"
-            # Extract strike and type (e.g., 54000CE)
             strike_match = re.search(r"(\d+)(CE|PE)", symbol)
             if strike_match:
                 strike = int(strike_match.group(1))
@@ -123,22 +122,36 @@ if os.path.exists(DATA_FILE):
 
         st.markdown("---")
         st.subheader("🧱 Institutional Walls (S/R)")
-        res_wall = f_df[f_df['Type'] == 'CE'].groupby('Strike')['Lots'].sum().idxmax()
-        sup_wall = f_df[f_df['Type'] == 'PE'].groupby('Strike')['Lots'].sum().idxmax()
-        w1, w2 = st.columns(2)
-        w1.error(f"Strongest Resistance (Max CE): {res_wall}")
-        w2.success(f"Strongest Support (Max PE): {sup_wall}")
+        # S/R Walls Calculation
+        opt_data = f_df[f_df['Strike'] > 0]
+        if not opt_data.empty:
+            ce_data = opt_data[opt_data['Type'] == 'CE']
+            pe_data = opt_data[opt_data['Type'] == 'PE']
+            
+            res_wall = ce_data.groupby('Strike')['Lots'].sum().idxmax() if not ce_data.empty else "N/A"
+            sup_wall = pe_data.groupby('Strike')['Lots'].sum().idxmax() if not pe_data.empty else "N/A"
+            
+            w1, w2 = st.columns(2)
+            w1.error(f"Strongest Resistance (Max CE): {res_wall}")
+            w2.success(f"Strongest Support (Max PE): {sup_wall}")
+        else:
+            st.info("No option data available for walls.")
 
         st.subheader("💡 Logic Recommendation")
-        if pcr > 1.1 and latest_px > sup_wall:
-            st.success("**BUY ON DIPS:** Support is strong at " + str(sup_wall) + ". PCR indicates buyers are dominating.")
-        elif pcr < 0.9 and latest_px < res_wall:
-            st.error("**SELL ON RISES:** Resistance is heavy at " + str(res_wall) + ". Smart money is writing calls.")
+        if pcr > 1.1:
+            st.success("**BUY ON DIPS:** PCR indicates buyers are dominating.")
+        elif pcr < 0.9:
+            st.error("**SELL ON RISES:** Smart money is writing calls.")
         else:
-            st.warning("**WAIT FOR BREAKOUT:** Price is trapped between S/R walls. No clear trend.")
+            st.warning("**WAIT FOR BREAKOUT:** No clear trend.")
 
         st.subheader("⛓️ Live Option Chain Heatmap")
-        step = 100 if "NIFTY" in selected_base else 10
+        # Dynamic Step Logic for MCX and Nifty
+        if "NIFTY" in selected_base or "CRUDEOIL" == selected_base:
+            step = 100
+        else:
+            step = 10
+            
         atm = round(latest_px / step) * step
         strikes = [atm + (i * step) for i in range(-5, 6)]
         oc_list = []
