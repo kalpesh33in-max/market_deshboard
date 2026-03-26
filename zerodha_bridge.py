@@ -11,9 +11,8 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
 
-# --- CONFIGURATION ---
-ZARODHA_PATH = r"C:\Users\kalpe\zarodha"
-INSTRUMENTS_FILE = os.path.join(ZARODHA_PATH, "instruments.csv")
+# --- CONFIGURATION (Local File) ---
+INSTRUMENTS_FILE = "instruments.csv"
 
 API_KEY = os.environ.get("API_KEY")
 API_SECRET = os.environ.get("API_SECRET")
@@ -56,12 +55,15 @@ def get_automated_token():
         driver.quit()
 
 def get_watchlist_from_csv():
-    print(f"Loading instruments from {INSTRUMENTS_FILE}...")
+    if not os.path.exists(INSTRUMENTS_FILE):
+        print(f"Error: {INSTRUMENTS_FILE} not found in the dashboard folder.")
+        return ["NSE:NIFTY BANK"]
+        
+    print(f"Loading instruments from local {INSTRUMENTS_FILE}...")
     df = pd.read_csv(INSTRUMENTS_FILE)
     watchlist = ["NSE:NIFTY BANK"]
     
     for asset in ASSETS:
-        # Match logic from your heatmap_engine.py
         futs = df[(df['name'] == asset) & (df['segment'].str.contains('FUT'))].copy()
         if not futs.empty:
             futs['expiry'] = pd.to_datetime(futs['expiry'])
@@ -83,7 +85,7 @@ def run_bridge():
     kite.set_access_token(access_token)
     
     watchlist = get_watchlist_from_csv()
-    print("✅ Zerodha Live Bridge (CSV Mode) Started.")
+    print("✅ Zerodha Live Bridge (Local CSV Mode) Started.")
     
     while True:
         try:
