@@ -2,7 +2,4 @@ streamlit
 pandas
 beautifulsoup4
 kiteconnect
-pyotp
-selenium
-webdriver-manager
 lxml
